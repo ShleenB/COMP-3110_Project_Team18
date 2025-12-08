@@ -1,5 +1,6 @@
 import re   #regular expressions
 import sys  #system (Mainly for sys.exit)
+import math
 
 """
 Project Code
@@ -79,27 +80,112 @@ class LHDiff:
 
     #(Step 3)
     # Generate Candidate List
-    #def levenshtein_distance():
-        #TODO
-    #def cosine_similarity():
-        #TODO
+    # Using Content and Context from Levenshtein Distance and Cosine Similarity
 
-    #(Step 3)
-    #def get_
+
+    #Levenshtein Distance
+    #Computing the levenshtein similarity for two lines/strings
+    #Allows us to obtain the content similarity for our files and their code lines
+
+    def levenshtein_distance(self, line1, line2):
+        #Catching Equal lines 
+        if line1 == line2:
+            return 1.0
+        
+        #Getting the length of the lines
+        len1 = len(line1)
+        len2 = len(line2)
+
+        #If either string is empty return 0
+        if len1 == 0 or len2 == 0:
+            return 0.0
+        
+        #Creating a 2D array (matrix) to store our distances
+        #dynamic programming approach to obtaining the LD
+        matrix = [[0] * (len2 + 1) for i in range(len1 + 1)] 
+        #This creates an empty matrix of zeros with columns and rows equal to our lengths + 1
+
+
+        #Filling in the first column and row of our matrix (with our strings)
+        for i in range (len1 +1):
+            matrix[i][0] = i
+        for j in range (len2 + 1):
+            matrix[0][j] = j
+
+        # Fill matrix with our 
+        for i in range (1, len1 + 1):
+            for j in range(1, len2 + 1):
+                #Calculate our cost from the two prior characters
+                #0 if not change is need (same chars), 1 if change is needed (diff chars)
+                cost = 0 if line1[i - 1] == line2[j - 1] else 1
+                #Get the minimum of the three possible cases, 
+                #which gives us the best way to traverse from line1[i-1] to line2[j-1]
+                #place this minimum in our matrix
+                matrix[i][j] = min(
+                    matrix[i - 1][j] + 1,       # Deletion - deleting the char
+                    matrix[i][j - 1] + 1,       # Insertion - inserting the char
+                    matrix[i - 1][j - 1] + cost # Substitution - swapping the char
+                )
+        
+        return matrix[len1][len2]   #Obtain our levenshtein distance form the matrix
+
+
+    #Cosine Similarity
+    #Computing the cosine similarity for two strings - consisting of 9 lines (4 before and 4 after)
+    #Allows us to obtain the context similarity for our files and their code lines
+
+    def cosine_similarity(self, text1, text2):
+        #extract tokens from the given strings (which contain 9 lines)
+        token1 = re.findall(r'\w+', text1)
+        token2 = re.findall(r'\w+', text2)
+
+        #Edge cases
+        #Check if the tokens are identical
+        if not token1 and not token2: return 1.0
+        #Check if they are completely different
+        if not token1 or not token2: return 0.0
+
+        #Using sets, obtain all of the overlap from our 2 strings
+        words = set(token1).union(set(token2))
+
+        # 2 frequencies - one for each string
+        freq1 = {w: 0 for w in words}
+        freq2 = {w: 0 for w in words}
+        # get the frequencies of our overlapping words from each string
+        for w in token1:
+            #gets the frequency (times the word appears) of the words in our set
+            #as they appear in the string list token1
+            freq1[w] += 1
+        for w in token2:
+            #same for token2
+            freq2[w] += 1
+
+        # Dot Product of our frequencies
+        dot_product = sum(freq1[w] * freq2[w] for w in words)
+
+        # Magnitudes - magnitude of each vector for the cosine sim algorithm
+        mag1 = math.sqrt(sum(v**2 for v in freq1.values()))
+        mag2 = math.sqrt(sum(v**2 for v in freq2.values()))
+
+        # If either are zero, return 0 to not get a dividebyzero error
+        if mag1 == 0 or mag2 == 0:
+            return 0.0
+        # Otherwise we return the cosine similarity
+        return dot_product/ (mag1 * mag2)
+        
 
     #(unfinished)
     # run: runs the previously defined functions
     # This is where all of the steps culminate (For LHDiff)
     def run(self):
-        
-
+        #TODO
         #Check for unchanged lines
-        self.unix_diff()
+        #self.unix_diff()
 
-
-        
-
-
+        #Generate Candidates
+        #lev = self.levenshtein_distance()
+        #cos = self.cosine_similarity()
+        return
 
 # get_file: attempts to read a given filepath
 def get_file(filepath):
@@ -121,10 +207,10 @@ def get_file(filepath):
 # generate_xml: XML Output Generation for the  
 # Eventually this will generate our XML output showing the line differences
 # using the given filenames
-def generate_xml(old_file_name, new_file_name):
+def generate_xml(old_file_name, new_file_name, test_num):
     #TODO
     #Need to change this to file output rather than print
-    print(f'TEST NAME="File Comparison" FILE1="{old_file_name}" FILE2="{new_file_name}">"')
+    print(f'TEST NAME="TEST{test_num}" FILE1="{old_file_name}" FILE2="{new_file_name}">"')
     LHDiff()
 
 
@@ -160,7 +246,7 @@ if __name__ == "__main__":
     Folder1 = "EvalTest"    # Given Test Case Folder
     Folder2 = "GroupTest"   # Folder of Test Cases made by our group
     #Files in first folder
-    Files1 = ["ArrayReference_1.java","ArrayReference_2.java"]   
+    Files1 = ["asdf_1.java","asdf_2.java"]   
     #Files in second folder
     Files2 = []
 
