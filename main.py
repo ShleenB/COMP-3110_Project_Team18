@@ -32,9 +32,7 @@ class LHDiff:
         #Mapping lists for which old lines will match the new lines
         self.map_old = {}
         #The list of new indices is a set so that we don't match to multiple old lines
-        self.map_new = set()    #Changed to set
-
-
+        self.map_new = set()
 
     
     #(Step 1)
@@ -67,7 +65,7 @@ class LHDiff:
                     #If the lines are identical (ie. all of their letters match)
                     if self.old_lines[i] == self.new_lines[j]:
                         #Saving line numbers in our mapping
-                        self.map_old = j
+                        self.map_old[i] = j
                         self.map_new.add(j)
                         #
                         old_set.add(i)
@@ -179,12 +177,24 @@ class LHDiff:
     # This is where all of the steps culminate (For LHDiff)
     def run(self):
         #TODO
-        #Check for unchanged lines
-        #self.unix_diff()
+        # (Step 1) Pre-processing: Should happen in the individual functions when line processing is needed
 
-        #Generate Candidates
-        #lev = self.levenshtein_distance()
-        #cos = self.cosine_similarity()
+        # (Step 2) Check for unchanged lines
+
+        #Run the Unix Diff here
+
+        # (Step 3) Generate Candidates
+
+        #Uses Levenshtein Distance and Cosine Similarity to check the content and context of the map
+
+        # (Step 4) - Conflict Resolution  
+
+        # Should just consist of ensuring the mapped candidates are 1-1 
+
+        # (Step 5) - Detecting Line Splits
+
+        #Use the levenshtein distance for a line, and it's next line to see if the similarity increased - if so, we get lines splits
+        
         return
 
 # get_file: attempts to read a given filepath
@@ -211,7 +221,8 @@ def generate_xml(old_file_name, new_file_name, test_num):
     #TODO
     #Need to change this to file output rather than print
     print(f'TEST NAME="TEST{test_num}" FILE1="{old_file_name}" FILE2="{new_file_name}">"')
-    LHDiff()
+    #For now output to terminal
+
 
 
 
