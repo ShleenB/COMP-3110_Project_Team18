@@ -197,17 +197,17 @@ class LHDiff:
         return " ".join(context_lines) # Returning the context as one large string for cosine similarity
 
 
-    # (Unfinished) - still needs other steps/parts 4 & 5
+    # (NEEDS REVIEW) - has all 5 steps, but needs overview and testing
     # run: runs the previously defined functions
     # This is where all of the steps culminate (For LHDiff)
     def run(self):
-        #TODO
         # (Step 1) Pre-processing: Should happen in the individual functions when line processing is needed
 
         # (Step 2) Check for unchanged lines
         self.unix_diff()
 
         # (Step 3) Generate Candidates
+        # Get our changed lines (ie. lines note detected in step 2)
         # These lists contain all unmapped indices from the old and new sources
         unmap_old = [i for i in range(len(self.old_lines)) if i not in self.map_old]
         unmap_new = [j for j in range(len(self.new_lines)) if j not in self.mapped_indices]
@@ -249,15 +249,60 @@ class LHDiff:
                         'score': sim_score
                     })
 
-        # (Step 4) - Conflict Resolution  
+        # (Step 4) - Conflict Resolution        
+        # sort candidates by score (descending order by score)
+        # might need to change sorting pattern, and move this into a seperate function
 
-        # Should just consist of ensuring the mapped candidates are 1-1 
+        candidate_lines.sort(key=lambda c: c['score'], reverse=True)
+
+
+        for candidate in candidate_lines:
+            #Get the indices of the old and new lines for the candidate
+            old_id = candidate['old_index']
+            new_id = candidate['new_index']
+            #If both lines are unmapped, that means we have a line change/movement
+            if old_id not in self.map_old and new_id not in self.mapped_indices:
+                self.map_old[old_id] = new_id   #Old line mapped to new line
+                self.mapped_indices.add(new_id)  #New line is also 'taken' and can't be remapped (ensures 1-1)
 
         # (Step 5) - Detecting Line Splits
 
-        #Use the levenshtein distance for a line, and it's next line to see if the similarity increased - if so, we get lines splits
-        
-        return
+        #If adding more lines to our context increases similarity,
+        #then it makes sense that it is a line split
+        #(Also move this into another func)
+
+        sorted_old = sorted(self.map_old.keys())    #sort our old lines (putting them in order)
+        for old_index in sorted_old:
+            new_index = self.map_old[old_index]
+
+            #Checking if the next line is unmapped (and exists)
+            next_index = new_index + 1
+            if next_index < len(self.new_lines) and next_index not in self.mapped_indices:
+                #Process and obtain the lines of our indexes
+                old_line = self.process_line(self.old_lines[old_index])
+                new_line = self.process_line(self.new_lines[new_index])
+
+                #Lev Distance without adding the next index (pre-combine)
+                lev_dist = self.levenshtein_distance(old_line,new_line)
+
+                #Combined String
+                combine_line = new_line + " " + self.process_line(self.new_lines[next_index])
+
+                #Lev Distance of combined string
+                lev_dist_combine = self.levenshtein_distance(old_line,combine_line)
+
+                #If the combined has a greater similarity score, we consider it a line split
+                if lev_dist_combine > lev_dist:
+                    #Add the index to our mapping
+                    self.mapped_new_indices.add(next_index)
+
+        return self.map_old
+    
+
+
+
+
+
 
 # get_file: attempts to read a given filepath
 def get_file(filepath):
@@ -283,7 +328,8 @@ def generate_xml(old_file_name, new_file_name, test_num):
     #TODO
     #Need to change this to file output rather than print
     print(f'TEST NAME="TEST{test_num}" FILE1="{old_file_name}" FILE2="{new_file_name}">"')
-    #For now output to terminal
+    
+    #Write out each of the matched lines here (Prof's xml files only show changed lines it seems)
 
 
 
@@ -307,7 +353,7 @@ def compare_files(folder, file1, file2):
     new_file = get_file(file_path2)
 
     #TODO
-    #Use LHdiff (needs implementation after LHDiff is completed)
+    #Now that LHDiff is (mostly) complete, we can complete the file comparison (and actually output properly)
 
     #Generate XML output
 
