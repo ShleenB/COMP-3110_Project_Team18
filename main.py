@@ -20,6 +20,8 @@ Team 18
 #Step 5: Detect Line Splits
 #Then evaluate/output
 
+#NOTE: May need to change to simhash (chek the ppt)
+
 # Main LHDiff Class
 # This will perform the LHDiff algorithm on an old file and new file
 class LHDiff:
@@ -31,8 +33,9 @@ class LHDiff:
 
         #Mapping lists for which old lines will match the new lines
         self.map_old = {}
-        #The list of new indices is a set so that we don't match to multiple old lines
-        self.map_new = set()
+        #The list of mapped indices is a set to ensure 1-1 mapping
+        self.mapped_indices = set()  
+
 
     
     #(Step 1)
@@ -61,20 +64,19 @@ class LHDiff:
         for i in range(old_len):
             for j in range(new_len):
                 #Ensure we haven't already matched them
-                if i not in old_set and j not in self.map_new:
+                if i not in old_set and j not in self.mapped_indices:
                     #If the lines are identical (ie. all of their letters match)
                     if self.old_lines[i] == self.new_lines[j]:
                         #Saving line numbers in our mapping
                         self.map_old[i] = j
-                        self.map_new.add(j)
-                        #
+                        self.mapped_indices.add(j)
                         old_set.add(i)
                         break
                         #This catches all of the unchanged lines in the LCS
 
 
 
-        
+
 
     #(Step 3)
     # Generate Candidate List
@@ -124,8 +126,11 @@ class LHDiff:
                     matrix[i][j - 1] + 1,       # Insertion - inserting the char
                     matrix[i - 1][j - 1] + cost # Substitution - swapping the char
                 )
-        
-        return matrix[len1][len2]   #Obtain our levenshtein distance form the matrix
+        #Added normalization
+        lev_dist = matrix[len1][len2]   # Obtain our levenshtein distance form the matrix
+        max_len = max(len1, len2)       # Get the maximum between our two lines
+        #Return the similarity score of the normalized levenshtein distance
+        return 1.0 - (lev_dist/max_len)    
 
 
     #Cosine Similarity
@@ -171,8 +176,28 @@ class LHDiff:
         # Otherwise we return the cosine similarity
         return dot_product/ (mag1 * mag2)
         
+    # get_context:
+    # Additional method for obtaining context for the cosine similarity method
+    def get_context(self, lines, index):
+        context_size = 4 
 
-    #(unfinished)
+        #Our context start is 4 below the current index (if its with bounds)
+        if index - context_size <= 0: start_index = 0
+        else: start_index = index - context_size  
+        #Our context end is 4 above the current index
+        if index + context_size >= len(lines): end_index = len(lines)
+        else: end_index = index + context_size
+
+        context_lines = []  #list of context 
+        for i in range(start_index, end_index):
+            # Exclude the centre/given index (possibly remove)
+            if i == index: continue
+            # Every other index (+4 and -4 of the given index) is added
+            context_lines.append(self.process_line(lines[i]))   #These lines are also processed
+        return " ".join(context_lines) # Returning the context as one large string for cosine similarity
+
+
+    # (Unfinished) - still needs other steps/parts 4 & 5
     # run: runs the previously defined functions
     # This is where all of the steps culminate (For LHDiff)
     def run(self):
@@ -180,12 +205,49 @@ class LHDiff:
         # (Step 1) Pre-processing: Should happen in the individual functions when line processing is needed
 
         # (Step 2) Check for unchanged lines
-
-        #Run the Unix Diff here
+        self.unix_diff()
 
         # (Step 3) Generate Candidates
+        # These lists contain all unmapped indices from the old and new sources
+        unmap_old = [i for i in range(len(self.old_lines)) if i not in self.map_old]
+        unmap_new = [j for j in range(len(self.new_lines)) if j not in self.mapped_indices]
 
-        #Uses Levenshtein Distance and Cosine Similarity to check the content and context of the map
+        # Obtain and process (Step 1) our lines using the prior mappings
+        processed_old = {i: self.process_line(self.old_lines[i]) for i in unmap_old}
+        processed_new = {j: self.process_line(self.new_lines[j]) for j in unmap_new}
+
+        #List of candidate lines - will contain the location of the line in both old and new files as well as it's score
+        candidate_lines = []
+
+        for i in unmap_old:
+            old_line = processed_old[i] #Get our processed line from the list
+            context_old = self.get_context(self.old_lines,i) #get the context of that line
+
+            for j in unmap_new:
+                new_line = processed_new[j]
+
+                #Check content similarities (Levenshtein distance)
+                content_sim = self.levenshtein_distance(old_line,new_line)
+
+                #Consider matches with higher similarity
+                if content_sim < 0.5:
+                    continue
+
+                #Check context similarities
+                context_new = self.get_context(self.new_lines,j)
+                context_sim = self.cosine_similarity(context_old,context_new)
+
+                # Combine the score of our content and context
+                sim_score = 0.6 * content_sim + 0.4 * context_sim
+
+                #Similarity threshold needed to consider lines the same
+                sim_threshold = 0.7     # Might need changing
+                if sim_score >= sim_threshold:
+                    candidate_lines.append({
+                        'old_index': i,
+                        'new_index': j,
+                        'score': sim_score
+                    })
 
         # (Step 4) - Conflict Resolution  
 
