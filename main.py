@@ -1,6 +1,7 @@
 import re   #regular expressions
 import sys  #system (Mainly for sys.exit)
 import math
+import os   #folder and os manipulation
 
 """
 Project Code
@@ -19,8 +20,6 @@ Team 18
 #Step 4: Resolve Conflict
 #Step 5: Detect Line Splits
 #Then evaluate/output
-
-#NOTE: May need to change to simhash (chek the ppt)
 
 # Main LHDiff Class
 # This will perform the LHDiff algorithm on an old file and new file
@@ -320,7 +319,8 @@ def get_file(filepath):
         sys.exit(1)
     #In both errors we exit the system since we can't continue
 
-#(unfinished)
+
+
 # generate_xml: XML Output Generation for the  
 # Eventually this will generate our XML output showing the line differences
 # using the given filenames
@@ -333,51 +333,107 @@ def generate_xml(old_file_name, new_file_name, test_num):
 
 
 
-
-
-#   (Unfinished)
 # compare_files: compares files from a given folder, 
 # This is where everything comes together, allowing us to use LHDiff on 2 files
 # in our folders using the main method and this method
-def compare_files(folder, file1, file2):
-    #Get the path to the files by joining the folder name and filenames
-    file_path1 = "".join((folder,"/",file1))
-    file_path2 = "".join((folder,"/",file2))
+def compare_files(folder, file_group):
+    #Get the information from the file group
+    base_name = file_group['base_name']
+    extension = file_group['extension']
+    num_versions = file_group['versions']
 
-    print("Comparing Files: ")
-    print(f"\tOld: {file_path1}")
-    print(f"\tNew: {file_path2}")
+    # Obtain all of the filepaths from the file group
+    file_paths = []
+    for version in range(1, num_versions + 1):
+        filename = f"{base_name}_{version}{extension}"  #Recreate the filename
+        full_path = os.path.join(folder, filename)      #Add the folder to the filepath
+        file_paths.append((version, filename, full_path))#Add the full path to the list
 
     #Obtain the file information/content using our get_file method
-    old_file = get_file(file_path1)
-    new_file = get_file(file_path2)
+    comparison_results = []
 
     #TODO
     #Now that LHDiff is (mostly) complete, we can complete the file comparison (and actually output properly)
 
+
     #Generate XML output
+
+
+
+# get_file_groups:
+# Helper method that obtains file groups from the given folder
+# Example 'asdf_1.java' 'asdf_2.java' are stored in a file group 'asdf.java' which is the key
+def get_file_groups(folder):
+
+    #Ensure the folder exists
+    if not os.path.exists(folder):
+        print(f"Warning: Folder '{folder}' does not exist")
+        return {}
+    #Get all of the files in the folder
+    folder_files = os.listdir(folder)
+
+    #Exclude the xml files since they're output files
+    valid_files = []
+    for file in folder_files:
+        #Skip the xml files
+        if file.endswith('.xml') or file.endswith('.xml~'):
+            continue
+        valid_files.append(file)
+
+    #using dictionary to group files by their names
+    file_groups = {}
+
+    for filename in valid_files:
+        #Using regex to match our files with the same names
+        #This regex finds strings of the format 'filename_number.extension'
+        filename_match = re.match(r'^(.+?)_(\d+)(\..+)$',filename)
+
+        #Match returns a list of strings matching the sections of our regex, so as long as it returned a list
+        #We can extract our filename components from it
+        if filename_match:
+            #Getting the filename components (version number isn't needed)
+            base_name = filename_match.group(1)
+            extension = filename_match.group(3)
+
+            #Dictionary keys are their filenames without the '_number'
+            key = f"{base_name}{extension}"
+
+            if key not in file_groups:
+                #New key if it isn't already in the dictionary
+                file_groups[key] = {
+                    'base_name': base_name,
+                    'extension': extension,
+                    'versions': 1
+                }
+            else:
+                #Increase the number of versions by 1 every time we detect another file with this name and extension
+                file_groups[key]['versions'] += 1
+            #Number of versions is kept in the dictionary with their number and full filename
+            
+    #Remove files with one version (ie. files that don't have anything to compare to) 
+    valid_file_groups = {k: v for k, v in file_groups.items() if v.get('versions', 0 ) >= 2}
+    return valid_file_groups
+
 
 
 # Main execution, actually runs the code
 if __name__ == "__main__":
 
     #   Folders for testing
-    Folder1 = "EvalTest"    # Given Test Case Folder
-    Folder2 = "GroupTest"   # Folder of Test Cases made by our group
-    #Files in first folder
-    Files1 = ["asdf_1.java","asdf_2.java"]   
-    #Files in second folder
-    Files2 = []
+    test_folders = ["EvalTest","GroupTest"]
 
-    #   Ensure there's even indexes
-    if len(Files1)%2==0 and len(Files2)%2==0:
-        #First folder
-        for i in range(0,len(Files1),2):
-            compare_files(Folder1,Files1[i],Files1[i+1])
-        #Second folder
-        for i in range(0,len(Files2),2):
-            compare_files(Folder2,Files2[i],Files2[i+1])
-    else:
-        print("Error: Uneven indices in file list")
-        sys.exit(1)
+    #   File Groups obtained from the folders
+    file_groups = []
+
+    # Getting file groups for each folder
+    for folder in test_folders:
+        file_groups.append(get_file_groups(folder))
         
+    print(file_groups)
+
+    
+
+
+    
+
+
