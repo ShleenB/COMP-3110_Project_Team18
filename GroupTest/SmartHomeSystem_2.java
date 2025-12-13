@@ -1,4 +1,4 @@
-interface SmartHomeSystem_mut {
+interface SmartHomeSystem_2 {
 
     void turnOnDevice(String deviceId);
     void turnOffDevice(String deviceId);

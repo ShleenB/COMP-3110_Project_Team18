@@ -1,7 +1,7 @@
-class GraduateStudent_mut extends Student_og {
+class GraduateStudent_2 extends Student_1 {
     String researchTopic;
     public String supervisorName;
-    GraduateStudent(String name, String department, double cgpa, String researchTopic, String supervisorName) {
+    GraduateStudent_2(String name, String department, double cgpa, String researchTopic, String supervisorName) {
         super(name, department, cgpa);
         this.researchTopic = researchTopic.toLowerCase();
         this.supervisorName = supervisorName.trim();

@@ -1,1 +1,10 @@
 Test files to be added.
+
+<h1>Hashir Khan - khan4l1@uwindsor.ca</h1>
+Person.java
+GraduateStudent.java
+SmartHomeSystem.java
+UniversitySystem.java
+Student.java
+
+<h1>Collin Brown - brown9o@uwindsor.ca - 110140191</h1>

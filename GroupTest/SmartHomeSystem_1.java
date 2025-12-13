@@ -1,4 +1,4 @@
-public interface SmartHomeSystem {
+public interface SmartHomeSystem_1 {
 
     void turnOnDevice(String deviceId);
     void turnOffDevice(String deviceId);

@@ -1,8 +1,8 @@
-public class Student_mut extends Person_og {
+public class Student_2 extends Person_1 {
     private final String department = "''" ;
     protected static double cgpa;
 
-    public Student(String name, String department, double cgpa) {
+    public Student_2(String name, String department, double cgpa) {
         super(name);
         // no new
         this.department     = department;

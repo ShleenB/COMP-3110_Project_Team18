@@ -30,7 +30,7 @@ class LHDiff:
         self.old_lines = old_src.splitlines()
         self.new_lines = new_src.splitlines()
 
-        #Mapping lists for which old lines will match the new lines
+        #Mapping dicts for which old lines will match the new lines
         self.map_old = {}
         #The list of mapped indices is a set to ensure 1-1 mapping
         self.mapped_indices = set()  
@@ -196,7 +196,6 @@ class LHDiff:
         return " ".join(context_lines) # Returning the context as one large string for cosine similarity
 
 
-    # (NEEDS REVIEW) - has all 5 steps, but needs overview and testing
     # run: runs the previously defined functions
     # This is where all of the steps culminate (For LHDiff)
     def run(self):
@@ -293,7 +292,7 @@ class LHDiff:
                 #If the combined has a greater similarity score, we consider it a line split
                 if lev_dist_combine > lev_dist:
                     #Add the index to our mapping
-                    self.mapped_new_indices.add(next_index)
+                    self.mapped_indices.add(next_index)
 
         return self.map_old
     
@@ -320,23 +319,90 @@ def get_file(filepath):
     #In both errors we exit the system since we can't continue
 
 
-
-# generate_xml: XML Output Generation for the  
-# Eventually this will generate our XML output showing the line differences
-# using the given filenames
-def generate_xml(old_file_name, new_file_name, test_num):
-    #TODO
-    #Need to change this to file output rather than print
-    print(f'TEST NAME="TEST{test_num}" FILE1="{old_file_name}" FILE2="{new_file_name}">"')
+# generate_xml: XML Output Generation for the compared files
+# Takes a list of compared files and their mappings, outputting those mappings to an XML document
+def generate_xml(compared_files, test_number, name):
     
-    #Write out each of the matched lines here (Prof's xml files only show changed lines it seems)
+    # Get the test name with it's corresponding number
+    test_name = f"TEST{test_number}"
+    
+    # Start building XML output
+    xml_lines = []
+    xml_lines.append(f'<TEST NAME="{test_name}" FILE="{name[0]}">\n')
+
+    # NOTE: For the first block in each of the prof's test cases,
+    # it only shows the changed lines but mapped to themselves
+
+    # This collects all of the changed lines in ANY comparison
+    all_line_numbers = set()    # Set of all changed lines
+    for comparison in compared_files:   # Checking every comparison mapping
+        for old_line, new_line in comparison['mappings'].items():
+            all_line_numbers.add(old_line)
+            all_line_numbers.add(new_line)
+   
+    # Creating the first block of XML output, this block specifically has no changes made
+    # and only displays what lines will be changed in the future
+    xml_lines.append(f' <VERSION NUMBER="1" CHECKED="TRUE">\n')
+    
+    # Sort line numbers and create identity mappings
+    sorted_lines = sorted(all_line_numbers)
+    for line_num in sorted_lines:
+        #Display each line without changes
+        display_num = line_num + 1
+        xml_lines.append(f'   <LOCATION ORIG="{display_num}" NEW="{display_num}" />')
+    
+    xml_lines.append('\n</VERSION>\n')
+    
+    # Now to create the XML output for the actual changes
+    version_number = 2
+    for comparison in compared_files:
+        mappings = comparison['mappings']
+        
+        # Add version header
+        xml_lines.append(f' <VERSION NUMBER="{version_number}" CHECKED="TRUE">\n')
+        
+        # Sorting the mappings so that they output in order
+        sorted_mappings = sorted(mappings.items())
+        
+        # Now for each mapping, we output a line of XML output
+        for orig_line, new_line in sorted_mappings:
+            # Getting the line numbers (+1 since it's 0-based indexing)
+            orig_display = orig_line + 1
+            new_display = new_line + 1
+            # Adding the mapped line output
+            xml_lines.append(f'   <LOCATION ORIG="{orig_display}" NEW="{new_display}" />')
+        
+        #Finish the version block
+        xml_lines.append('\n</VERSION>\n')
+        
+        #Increment out version number
+        version_number += 1
+    # Finishing the block
+    xml_lines.append('</TEST>')
+    
+    # Creating output folder if it doesn't exist
+    output_folder = "output"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    # Writing XML to file in output folder
+    output_filename = os.path.join(output_folder, f"{name[0]}.xml")
+    try:
+        with open(output_filename, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(xml_lines))
+        print(f"XML output generated: {output_filename}")
+    except Exception as e:
+        print(f"Error writing XML file: {e}")
+
+
+    
 
 
 
 # compare_files: compares files from a given folder, 
-# This is where everything comes together, allowing us to use LHDiff on 2 files
-# in our folders using the main method and this method
-def compare_files(folder, file_group):
+# This is where everything comes together, We use LHDiff on the given files, obtaining their mappings
+# then we use those mappings to output the line changes to an XML file.
+def compare_files(folder, file_group,test_number):
     #Get the information from the file group
     base_name = file_group['base_name']
     extension = file_group['extension']
@@ -345,18 +411,42 @@ def compare_files(folder, file_group):
     # Obtain all of the filepaths from the file group
     file_paths = []
     for version in range(1, num_versions + 1):
-        filename = f"{base_name}_{version}{extension}"  #Recreate the filename
-        full_path = os.path.join(folder, filename)      #Add the folder to the filepath
-        file_paths.append((version, filename, full_path))#Add the full path to the list
+        filename = f"{base_name}_{version}{extension}"      #Recreate the filename
+        full_path = os.path.join(folder, filename)          #Add the folder to the filepath
+        file_paths.append((version, filename, full_path))   #Add the full path to the list
 
     #Obtain the file information/content using our get_file method
     comparison_results = []
 
-    #TODO
-    #Now that LHDiff is (mostly) complete, we can complete the file comparison (and actually output properly)
+   # Compare each consecutive pair of files (0-1, 1-2, 2-3, etc.)
+    for i in range(len(file_paths) - 1):
+        # Get current and next file information
+        curr_version, curr_filename, curr_path = file_paths[i]
+        next_version, next_filename, next_path = file_paths[i + 1]
+        
+        # Read file contents
+        old_src = get_file(curr_path)
+        new_src = get_file(next_path)
+        
+        # Create LHDiff instance and run the algorithm
+        diff = LHDiff(old_src, new_src)
+        mappings = diff.run()
+        
+        # Store the comparison result with filenames and mappings
+        comparison_results.append({
+            'old_file': curr_filename,
+            'new_file': next_filename,
+            'mappings': mappings
+        })
 
+    #Additional parameter which contains the file name components (used in generate_xml)
+    file_group_name = [base_name, extension]
 
     #Generate XML output
+    generate_xml(comparison_results, test_number, file_group_name)
+
+
+
 
 
 
@@ -422,18 +512,20 @@ if __name__ == "__main__":
     #   Folders for testing
     test_folders = ["EvalTest","GroupTest"]
 
-    #   File Groups obtained from the folders
-    file_groups = []
+    #   Number to track each test
+    test_number = 0
 
-    # Getting file groups for each folder
+    # Process each folder
     for folder in test_folders:
-        file_groups.append(get_file_groups(folder))
+        # Get all file groups in this folder
+        file_groups_dict = get_file_groups(folder)
         
-    print(file_groups)
-
-    
-
-
-    
-
-
+        # Iterate over each file group in the dictionary
+        for filename, file_group in file_groups_dict.items():
+            # Output to terminal which comparison we're running
+            print(f"Comparing: {filename}")
+            # Perform the comparison
+            compare_files(folder, file_group,test_number)
+            # Increment the test number
+            test_number += 1 
+        print("\nCompleted All Comparisons in folder: {folder}")

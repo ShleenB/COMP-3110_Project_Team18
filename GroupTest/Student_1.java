@@ -1,8 +1,8 @@
-class Student_og extends Person_og {
+class Student_1 extends Person_1 {
     protected String department;
     protected double cgpa;
 
-    public Student(String name, String department, double cgpa) {
+    public Student_1(String name, String department, double cgpa) {
         super(name);
         this.department = department;
         this.cgpa = cgpa;

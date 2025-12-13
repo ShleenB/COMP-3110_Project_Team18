@@ -1,11 +1,11 @@
 //the original
-class Person_og {
+class Person_1 {
     private static int idCounter = 1000;
     protected String name;
     protected String id;
     protected static final String UNIVERSITY_NAME = "University of Windsor";
 
-    public Person_og(String name) {
+    public Person_1(String name) {
         this.name = name;
         this.id = generateID();
     }
