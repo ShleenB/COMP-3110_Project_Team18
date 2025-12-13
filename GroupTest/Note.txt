@@ -8,3 +8,8 @@ UniversitySystem.java
 Student.java
 
 <h1>Collin Brown - brown9o@uwindsor.ca - 110140191</h1>
+ShapeChanger.java
+Comments.java
+Swapper.java
+Whitespaces.java
+Multi.java
